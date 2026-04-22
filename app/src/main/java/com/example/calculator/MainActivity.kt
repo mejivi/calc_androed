@@ -16,7 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calculator.ui.theme.CalculatorTheme
-import net.objecthunter.exp4j.ExpressionBuilder // Важно для вычислений
+import net.objecthunter.exp4j.ExpressionBuilder
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,11 +40,11 @@ fun CalculatorScreen() {
     var result by remember { mutableStateOf("0") }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Дисплей
+        // ДИСПЛЕЙ
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
+                .weight(1f) // Правильное использование weight
                 .background(
                     MaterialTheme.colorScheme.primaryContainer,
                     shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
@@ -66,7 +66,7 @@ fun CalculatorScreen() {
             }
         }
 
-        // Блок кнопок
+        // КНОПКИ
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -74,35 +74,27 @@ fun CalculatorScreen() {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // НОВЫЙ РЯД: Научные кнопки из макета
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                val scientificButtons = listOf("sqrt", "pi", "^", "!")
-                scientificButtons.forEach { label ->
-                    // Делаем их чуть меньше и прозрачнее, чтобы соответствовать дизайну
+            // Научный ряд
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                listOf("sqrt", "pi", "^", "!").forEach { label ->
                     CalcButton(
-                        text = when(label) {
-                            "sqrt" -> "√"
-                            "pi" -> "π"
-                            else -> label
-                        },
-                        containerColor = Color.Transparent, // Прозрачный фон как на макете
+                        text = if(label == "sqrt") "√" else if(label == "pi") "π" else label,
+                        containerColor = Color.Transparent,
                         modifier = Modifier.weight(1f),
-                        fontSize = 22.sp
-                    ) {
-                        expression += when(label) {
-                            "sqrt" -> "sqrt("
-                            "pi" -> "pi"
-                            else -> label
+                        fontSize = 22.sp,
+                        onClick = {
+                            expression += when(label) {
+                                "sqrt" -> "sqrt("
+                                "pi" -> "pi"
+                                else -> label
+                            }
+                            result = tryEvaluate(expression)
                         }
-                        result = tryEvaluate(expression)
-                    }
+                    )
                 }
             }
 
-            // Основная сетка кнопок
+            // Основные ряды
             val rows = listOf(
                 listOf("AC", "( )", "%", "÷"),
                 listOf("7", "8", "9", "×"),
@@ -111,10 +103,7 @@ fun CalculatorScreen() {
             )
 
             rows.forEach { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { label ->
                         val bgColor = when (label) {
                             "AC" -> MaterialTheme.colorScheme.secondary
@@ -142,21 +131,14 @@ fun CalculatorScreen() {
                 }
             }
 
-            // Последний ряд (0, запятая, равно)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            // Нижний ряд
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CalcButton("0", MaterialTheme.colorScheme.primary, Modifier.weight(2.1f)) {
                     expression += "0"; result = tryEvaluate(expression)
                 }
-                CalcButton(",", MaterialTheme.colorScheme.primary, Modifier.weight(1f)) {
-                    expression += "."
-                }
+                CalcButton(".", MaterialTheme.colorScheme.primary, Modifier.weight(1f)) { expression += "." }
                 CalcButton("=", MaterialTheme.colorScheme.tertiary, Modifier.weight(1f)) {
-                    if (result.isNotEmpty() && result != "Error") {
-                        expression = result
-                    }
+                    if (result.isNotEmpty() && result != "Error") expression = result
                 }
             }
         }
@@ -167,18 +149,15 @@ fun CalculatorScreen() {
 fun CalcButton(
     text: String,
     containerColor: Color,
-    modifier: Modifier = Modifier,
-    fontSize: androidx.compose.ui.unit.TextUnit = 28.sp, // Добавили настройку размера
+    modifier: Modifier,
+    fontSize: androidx.compose.ui.unit.TextUnit = 28.sp,
     onClick: () -> Unit
 ) {
     Button(
         onClick = onClick,
         modifier = modifier.aspectRatio(if (text == "0") 2.1f else 1f),
         shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = containerColor,
-            contentColor = MaterialTheme.colorScheme.onBackground
-        ),
+        colors = ButtonDefaults.buttonColors(containerColor = containerColor, contentColor = MaterialTheme.colorScheme.onBackground),
         contentPadding = PaddingValues(0.dp),
         elevation = ButtonDefaults.buttonElevation(0.dp)
     ) {
@@ -186,18 +165,12 @@ fun CalcButton(
     }
 }
 
-// ФУНКЦИЯ ВЫЧИСЛЕНИЯ
 fun tryEvaluate(expr: String): String {
     if (expr.isEmpty()) return "0"
     return try {
-        // Убираем лишние символы для корректной работы библиотеки
-        val cleaned = expr.replace(",", ".")
+        val cleaned = expr.replace("×", "*").replace("÷", "/")
         val expression = ExpressionBuilder(cleaned).build()
         val res = expression.evaluate()
-
-        // Убираем .0 если число целое
         if (res % 1 == 0.0) res.toInt().toString() else String.format("%.2f", res)
-    } catch (e: Exception) {
-        "" // Если выражение еще не закончено (например "5+"), не пишем ничего
-    }
+    } catch (e: Exception) { "" }
 }
